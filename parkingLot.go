@@ -3,19 +3,32 @@ package parkingProject
 type Vehicle struct {
 }
 
-func NewVehicle(vehicleType string) *Vehicle {
+type ParkingLot struct {
+	ParkingSpace []*Vehicle
+}
+
+func NewVehicle() *Vehicle {
 	return &Vehicle{}
 }
 
-func Park(vehicle Vehicle) {
-
-	//return true
+func (P *ParkingLot) Park(vehicle *Vehicle) {
+	P.ParkingSpace = append(P.ParkingSpace, vehicle)
 }
 
-func IsParked(vehicle Vehicle) bool {
-	return true
+func (P *ParkingLot) IsParked(vehicle *Vehicle) bool {
+	for _, parkedVehicle := range P.ParkingSpace {
+		if parkedVehicle == vehicle {
+			return true
+		}
+	}
+	return false
 }
 
-func UnPark(vehicle Vehicle) {
+func (P *ParkingLot) UnPark(vehicle *Vehicle) {
+	for i, parkedVehicle := range P.ParkingSpace {
+		if parkedVehicle == vehicle {
+			P.ParkingSpace = append(P.ParkingSpace[:i], P.ParkingSpace[1+i:]...)
+		}
+	}
 
 }
