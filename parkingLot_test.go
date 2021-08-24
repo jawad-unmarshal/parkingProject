@@ -9,19 +9,25 @@ func TestPark(t *testing.T) {
 
 	t.Run("Expecting vehicle to be parked", func(t *testing.T) {
 		var vehicle = NewVehicle()
-		var ParkLot ParkingLot
-		ParkLot.Park(vehicle)
-		isParked := ParkLot.IsParked(vehicle)
+		owner := NewOwner()
+		subList := make([]Subscriber, 1)
+		subList[0] = owner
+		parkingLot := NewParkingLot(2, subList)
+		parkingLot.Park(vehicle)
+		isParked := parkingLot.IsParked(vehicle)
 
 		assert.True(t, isParked)
 	})
 
 	t.Run("Expect parked vehicle to be unparked", func(t *testing.T) {
 		var vehicle = NewVehicle()
-		var ParkLot ParkingLot
-		ParkLot.Park(vehicle)
-		ParkLot.UnPark(vehicle)
-		isParked := ParkLot.IsParked(vehicle)
+		owner := NewOwner()
+		subList := make([]Subscriber, 1)
+		subList[0] = owner
+		parkingLot := NewParkingLot(2, subList)
+		parkingLot.Park(vehicle)
+		parkingLot.UnPark(vehicle)
+		isParked := parkingLot.IsParked(vehicle)
 
 		assert.False(t, isParked)
 	})
@@ -104,13 +110,16 @@ func TestPark(t *testing.T) {
 		owner := NewOwner()
 		subList[0] = owner
 		parkingLot := NewParkingLot(2, subList)
-		attendant := NewAttendant(parkingLot)
+		parkingLotList := make([]*ParkingLot, 1)
+		parkingLotList[0] = parkingLot
+		attendant := NewAttendant(parkingLotList)
 		vehicle1 := NewVehicle()
 
 		parkResult := attendant.Park(vehicle1)
 
 		if parkResult != nil {
-			t.Fatalf("attendant failed to park: ", parkResult)
+			t.Fatal("attendant failed to park: ", parkResult)
+			t.FailNow()
 		}
 
 		isParked := parkingLot.IsParked(vehicle1)
@@ -124,18 +133,40 @@ func TestPark(t *testing.T) {
 		owner := NewOwner()
 		subList[0] = owner
 		parkingLot := NewParkingLot(2, subList)
-		attendant := NewAttendant(parkingLot)
+		parkingLotList := make([]*ParkingLot, 1)
+		parkingLotList[0] = parkingLot
+		attendant := NewAttendant(parkingLotList)
 		vehicle1 := NewVehicle()
 		attendant.Park(vehicle1)
 		parkResult := attendant.UnPark(vehicle1)
 
 		if parkResult != nil {
-			t.Fatalf("attendant failed to Unpark: ", parkResult)
+			t.Fatal("attendant failed to Unpark: ", parkResult)
+			t.FailNow()
 		}
 
 		isParked := parkingLot.IsParked(vehicle1)
 
-		assert.Equal(t, true, isParked, "Vehicle should be Unparked")
+		assert.Equal(t, false, isParked, "Vehicle should be Unparked")
+
+	})
+
+	t.Run("Expect attendant to receive notification", func(t *testing.T) {
+		var subList = make([]Subscriber, 1)
+		owner := NewOwner()
+		subList[0] = owner
+		parkingLot := NewParkingLot(1, subList)
+		parkingLotList := make([]*ParkingLot, 1)
+		parkingLotList[0] = parkingLot
+		attendant := NewAttendant(parkingLotList)
+		parkingLot.addSubscriber(attendant)
+
+		vehicle1 := NewVehicle()
+		attendant.Park(vehicle1)
+
+		result := attendant.IsFull
+
+		assert.Equal(t, true, result, "attendant should be notified")
 
 	})
 

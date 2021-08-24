@@ -2,6 +2,7 @@ package parkingProject
 
 import (
 	"errors"
+	"log"
 	"reflect"
 )
 
@@ -19,17 +20,36 @@ type Owner struct {
 }
 
 type Attendant struct {
-	*ParkingLot
+	IsFull      bool
+	parkingLots []*ParkingLot
 }
 
-func NewAttendant(parkingLot *ParkingLot) *Attendant {
-	return &Attendant{ParkingLot: parkingLot}
+type ParkingLot struct {
+	parkingSpace   []*Vehicle
+	availableSlots int
+	subscribers    []Subscriber
 }
 
-func (a Attendant) Park(vehicle *Vehicle) error {
-	lot := a.ParkingLot
-	return lot.Park(vehicle)
+func NewAttendant(parkingLots []*ParkingLot) *Attendant {
+	return &Attendant{parkingLots: parkingLots}
+}
 
+func (a *Attendant) Park(vehicle *Vehicle) error {
+	for _, pLot := range a.parkingLots {
+		log.Println(a.parkingLots)
+		if pLot.availableSlots > 0 {
+			return pLot.Park(vehicle)
+		}
+	}
+	return errors.New("All Parking lots are full")
+}
+func (a *Attendant) UnPark(vehicle *Vehicle) error {
+	for _, lot := range a.parkingLots {
+		if lot.IsParked(vehicle) {
+			return lot.UnPark(vehicle)
+		}
+	}
+	return errors.New("Vehicle not found.")
 }
 
 type PolicePerson struct {
@@ -44,15 +64,14 @@ func NewOwner() *Owner {
 	return &Owner{IsFull: false}
 }
 
-type ParkingLot struct {
-	parkingSpace   []*Vehicle
-	availableSlots int
-	subscribers    []Subscriber
+func (p *ParkingLot) addSubscriber(attendant *Attendant) {
+	p.subscribers = append(p.subscribers, attendant)
 }
 
 func NewParkingLot(availableSlots int, subscriberList []Subscriber) *ParkingLot {
 	return &ParkingLot{availableSlots: availableSlots, subscribers: subscriberList}
 }
+
 func (o *Owner) NotifyIsFull() {
 	o.IsFull = true
 }
@@ -67,6 +86,14 @@ func (p *PolicePerson) NotifyIsFull() {
 
 func (p *PolicePerson) NotifyIsAvailable() {
 	p.IsFull = false
+}
+
+func (a *Attendant) NotifyIsFull() {
+	a.IsFull = true
+}
+
+func (a *Attendant) NotifyIsAvailable() {
+	a.IsFull = false
 }
 
 func NewVehicle() *Vehicle {
