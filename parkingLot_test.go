@@ -29,12 +29,11 @@ func TestPark(t *testing.T) {
 	t.Run("Expect first parked vehicle to be unparked", func(t *testing.T) {
 		var vehicle1 = NewVehicle()
 		var vehicle2 = NewVehicle()
-		var vehicle3 = NewVehicle()
 		var ParkLot ParkingLot
 		ParkLot.Park(vehicle1)
 		ParkLot.Park(vehicle2)
-		ParkLot.Park(vehicle3)
-		ParkLot.UnPark(vehicle2)
+		ParkLot.UnPark(vehicle1)
+
 		isParked := ParkLot.IsParked(vehicle1)
 
 		assert.False(t, isParked)
