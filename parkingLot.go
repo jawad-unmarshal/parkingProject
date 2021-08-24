@@ -25,7 +25,7 @@ type Attendant struct {
 }
 
 type ParkingLot struct {
-	parkingSpace   []*Vehicle
+	parkingSpace   map[*Vehicle]bool
 	availableSlots int
 	subscribers    []Subscriber
 }
@@ -69,7 +69,7 @@ func (p *ParkingLot) addSubscriber(attendant *Attendant) {
 }
 
 func NewParkingLot(availableSlots int, subscriberList []Subscriber) *ParkingLot {
-	return &ParkingLot{availableSlots: availableSlots, subscribers: subscriberList}
+	return &ParkingLot{availableSlots: availableSlots, subscribers: subscriberList, parkingSpace: make(map[*Vehicle]bool)}
 }
 
 func (o *Owner) NotifyIsFull() {
@@ -125,7 +125,10 @@ func (P *ParkingLot) Park(vehicle *Vehicle) error {
 	if P.availableSlots == 0 {
 		return errors.New("Parking is full. Cannot park vehicle")
 	}
-	P.parkingSpace = append(P.parkingSpace, vehicle)
+	if P.parkingSpace[vehicle] == true {
+		return errors.New("Cannot park already parked vehicle")
+	}
+	P.parkingSpace[vehicle] = true
 	P.availableSlots--
 	if P.availableSlots == 0 {
 		P.NotifyAllSubs("NotifyIsFull")
@@ -135,21 +138,13 @@ func (P *ParkingLot) Park(vehicle *Vehicle) error {
 }
 
 func (P *ParkingLot) IsParked(vehicle *Vehicle) bool {
-	for _, parkedVehicle := range P.parkingSpace {
-		if parkedVehicle == vehicle {
-			return true
-		}
-	}
-	return false
+	return P.parkingSpace[vehicle]
 }
 
 func (P *ParkingLot) UnPark(vehicle *Vehicle) error {
-	for i, parkedVehicle := range P.parkingSpace {
-		if parkedVehicle != vehicle {
-			continue
-		}
 
-		P.unparkVehicleAt(i)
+	if P.parkingSpace[vehicle] {
+		P.parkingSpace[vehicle] = false
 		P.availableSlots++
 		if P.availableSlots == 1 {
 			P.NotifyAllSubs("NotifyIsAvailable")
@@ -157,9 +152,5 @@ func (P *ParkingLot) UnPark(vehicle *Vehicle) error {
 		return nil
 	}
 	return errors.New("Vehicle has not been parked yet")
-}
 
-func (P *ParkingLot) unparkVehicleAt(i int) {
-	P.parkingSpace[i] = P.parkingSpace[len(P.parkingSpace)-1]
-	P.parkingSpace = P.parkingSpace[:len(P.parkingSpace)-1]
 }
