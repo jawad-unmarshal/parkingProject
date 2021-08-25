@@ -112,7 +112,8 @@ func TestPark(t *testing.T) {
 		parkingLot := NewParkingLot(2, subList)
 		parkingLotList := make([]*ParkingLot, 1)
 		parkingLotList[0] = parkingLot
-		attendant := NewAttendant(parkingLotList)
+		strategy := Strategy(NewHighestAvailabilityStrategy())
+		attendant := NewAttendant(parkingLotList, strategy)
 		vehicle1 := NewVehicle()
 
 		parkResult := attendant.Park(vehicle1)
@@ -134,7 +135,8 @@ func TestPark(t *testing.T) {
 		parkingLot := NewParkingLot(2, subList)
 		parkingLotList := make([]*ParkingLot, 1)
 		parkingLotList[0] = parkingLot
-		attendant := NewAttendant(parkingLotList)
+		strategy := Strategy(NewHighestAvailabilityStrategy())
+		attendant := NewAttendant(parkingLotList, strategy)
 		vehicle1 := NewVehicle()
 		_ = attendant.Park(vehicle1)
 		parkResult := attendant.UnPark(vehicle1)
@@ -156,7 +158,8 @@ func TestPark(t *testing.T) {
 		parkingLot := NewParkingLot(1, subList)
 		parkingLotList := make([]*ParkingLot, 1)
 		parkingLotList[0] = parkingLot
-		attendant := NewAttendant(parkingLotList)
+		strategy := Strategy(NewHighestAvailabilityStrategy())
+		attendant := NewAttendant(parkingLotList, strategy)
 		//parkingLot.addSubscriber(attendant)
 		vehicle1 := NewVehicle()
 		_ = attendant.Park(vehicle1)
@@ -176,7 +179,8 @@ func TestPark(t *testing.T) {
 		parkingLotList := make([]*ParkingLot, 2)
 		parkingLotList[0] = parkingLot1
 		parkingLotList[1] = parkingLot2
-		attendant := NewAttendant(parkingLotList)
+		strategy := Strategy(NewHighestAvailabilityStrategy())
+		attendant := NewAttendant(parkingLotList, strategy)
 		vehicle := NewVehicle()
 		_ = attendant.Park(vehicle)
 
@@ -195,7 +199,8 @@ func TestPark(t *testing.T) {
 		parkingLotList := make([]*ParkingLot, 2)
 		parkingLotList[0] = parkingLot1
 		parkingLotList[1] = parkingLot2
-		attendant := NewAttendant(parkingLotList)
+		strategy := Strategy(NewHighestAvailabilityStrategy())
+		attendant := NewAttendant(parkingLotList, strategy)
 		vehicle := NewVehicle()
 		_ = attendant.Park(vehicle)
 
@@ -211,10 +216,31 @@ func TestPark(t *testing.T) {
 		subList[0] = owner
 		parkingLot1 := NewParkingLot(5, subList)
 		parkingLot2 := NewParkingLot(3, subList)
+		strategy := Strategy(NewHighestAvailabilityStrategy())
 		parkingLotList := make([]*ParkingLot, 2)
 		parkingLotList[0] = parkingLot1
 		parkingLotList[1] = parkingLot2
-		attendant := NewAttendant(parkingLotList)
+		attendant := NewAttendant(parkingLotList, strategy)
+		vehicle := NewVehicle()
+		_ = attendant.Park(vehicle)
+
+		result := parkingLot1.IsParked(vehicle)
+
+		assert.Equal(t, true, result, "vehicle should be parked in lot 1")
+
+	})
+
+	t.Run("Expect attendant to direct vehicle to parking lot with highest capacity among the available", func(t *testing.T) {
+		var subList = make([]Subscriber, 1)
+		owner := NewOwner()
+		subList[0] = owner
+		parkingLot1 := NewParkingLot(2, subList)
+		parkingLot2 := NewParkingLot(1, subList)
+		var strategy = Strategy(NewHighestCapacityStrategy())
+		parkingLotList := make([]*ParkingLot, 2)
+		parkingLotList[0] = parkingLot1
+		parkingLotList[1] = parkingLot2
+		attendant := NewAttendant(parkingLotList, strategy)
 		vehicle := NewVehicle()
 		_ = attendant.Park(vehicle)
 

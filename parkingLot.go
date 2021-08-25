@@ -20,25 +20,71 @@ type Owner struct {
 	//Attendant
 }
 
+type Strategy interface {
+	chooseLot(availableLot []*ParkingLot) *ParkingLot
+}
+
 type Attendant struct {
 	IsFull        bool
 	parkingLots   []*ParkingLot
 	availableLots []*ParkingLot
+	strategy      Strategy
+}
+
+type HighestCapacityStrategy struct {
+	i int
+}
+
+func NewHighestCapacityStrategy() HighestCapacityStrategy {
+	return HighestCapacityStrategy{}
+}
+func (s HighestCapacityStrategy) chooseLot(availableLots []*ParkingLot) *ParkingLot {
+	max := -1
+	var maxLot *ParkingLot
+	for _, lot := range availableLots {
+		if lot.Capacity > max {
+			max = lot.Capacity
+			maxLot = lot
+		}
+	}
+	return maxLot
+
+}
+
+type HighestAvailabilityStrategy struct {
+	i int
+}
+
+func NewHighestAvailabilityStrategy() HighestAvailabilityStrategy {
+	return HighestAvailabilityStrategy{}
+}
+
+func (s HighestAvailabilityStrategy) chooseLot(availableLots []*ParkingLot) *ParkingLot {
+	max := -1
+	var maxLot *ParkingLot
+	for _, lot := range availableLots {
+		if lot.getAvailableSlots() > max {
+			max = lot.getAvailableSlots()
+			maxLot = lot
+		}
+	}
+	return maxLot
+
 }
 
 type ParkingLot struct {
-	parkingSpace   map[*Vehicle]bool
-	availableSlots int
-	subscribers    []Subscriber
+	parkingSpace map[*Vehicle]bool
+	Capacity     int
+	subscribers  []Subscriber
 }
 
 type PolicePerson struct {
 	IsFull bool
 }
 
-func NewAttendant(parkingLots []*ParkingLot) *Attendant {
+func NewAttendant(parkingLots []*ParkingLot, strategy Strategy) *Attendant {
 	var availableLots = make([]*ParkingLot, 0)
-	RetAttendant := Attendant{parkingLots: parkingLots}
+	RetAttendant := Attendant{parkingLots: parkingLots, strategy: strategy}
 	for _, lot := range parkingLots {
 		lot.addSubscriber(&RetAttendant)
 		if lot.isAvailable() {
@@ -49,7 +95,7 @@ func NewAttendant(parkingLots []*ParkingLot) *Attendant {
 	return &RetAttendant
 }
 func (lot ParkingLot) isAvailable() bool {
-	return lot.availableSlots > 0
+	return lot.getAvailableSlots() > 0
 }
 
 func NewPolicePerson() *PolicePerson {
@@ -64,23 +110,23 @@ func NewVehicle() *Vehicle {
 	return &Vehicle{}
 }
 
-func NewParkingLot(availableSlots int, subscriberList []Subscriber) *ParkingLot {
-	return &ParkingLot{availableSlots: availableSlots, subscribers: subscriberList, parkingSpace: make(map[*Vehicle]bool)}
+func NewParkingLot(capacity int, subscriberList []Subscriber) *ParkingLot {
+	return &ParkingLot{Capacity: capacity, subscribers: subscriberList, parkingSpace: make(map[*Vehicle]bool)}
 }
 
-func (o *Owner) NotifyIsFull(lot *ParkingLot) {
+func (o *Owner) NotifyIsFull(*ParkingLot) {
 	o.IsFull = true
 }
 
-func (o *Owner) NotifyIsAvailable(lot *ParkingLot) {
+func (o *Owner) NotifyIsAvailable(*ParkingLot) {
 	o.IsFull = false
 }
 
-func (p *PolicePerson) NotifyIsFull(lot *ParkingLot) {
+func (p *PolicePerson) NotifyIsFull(*ParkingLot) {
 	p.IsFull = true
 }
 
-func (p *PolicePerson) NotifyIsAvailable(lot *ParkingLot) {
+func (p *PolicePerson) NotifyIsAvailable(*ParkingLot) {
 	p.IsFull = false
 }
 
@@ -106,17 +152,15 @@ func (a *Attendant) Park(vehicle *Vehicle) error {
 	if len(a.availableLots) == 0 {
 		return errors.New("all Parking lots are full")
 	}
-	max := -1
-	var maxLot *ParkingLot
-	for _, lot := range a.availableLots {
-		if lot.availableSlots > max {
-			max = lot.availableSlots
-			maxLot = lot
-		}
-	}
+	chooseStrategy := a.strategy
+	maxLot := chooseStrategy.chooseLot(a.availableLots)
 
 	return maxLot.Park(vehicle)
 
+}
+
+func (lot ParkingLot) getAvailableSlots() int {
+	return lot.Capacity - len(lot.parkingSpace)
 }
 
 func (a *Attendant) UnPark(vehicle *Vehicle) error {
@@ -128,19 +172,6 @@ func (a *Attendant) UnPark(vehicle *Vehicle) error {
 	return errors.New("Vehicle not found.")
 }
 
-//func (P ParkingLot) NotifyAllSubsIsFull() {
-//	for _, subscriber := range P.subscribers {
-//		subscriber.notifyIsFull()
-//
-//	}
-//}
-//func (P ParkingLot) NotifyAllSubsIsAvailable() {
-//	for _, subscriber := range P.subscribers {
-//		subscriber.NotifyIsAvailable()
-//
-//	}
-//}
-
 func (lot *ParkingLot) NotifyAllSubs(functionName string) {
 	for _, subscriber := range lot.subscribers {
 		args := []reflect.Value{reflect.ValueOf(lot)}
@@ -150,17 +181,15 @@ func (lot *ParkingLot) NotifyAllSubs(functionName string) {
 }
 
 func (lot *ParkingLot) Park(vehicle *Vehicle) error {
-	if lot.availableSlots == 0 {
+	if len(lot.parkingSpace) == lot.Capacity {
 		return errors.New("Parking is full. Cannot park vehicle")
 	}
 	if lot.parkingSpace[vehicle] == true {
 		return errors.New("Cannot park already parked vehicle")
 	}
 	lot.parkingSpace[vehicle] = true
-	lot.availableSlots--
-	if lot.availableSlots == 0 {
+	if lot.Capacity == len(lot.parkingSpace) {
 		lot.NotifyAllSubs("NotifyIsFull")
-		//P.NotifyAllSubsIsFull()
 	}
 	return nil
 }
@@ -171,9 +200,9 @@ func (lot *ParkingLot) IsParked(vehicle *Vehicle) bool {
 
 func (lot *ParkingLot) UnPark(vehicle *Vehicle) error {
 	if lot.parkingSpace[vehicle] {
-		lot.parkingSpace[vehicle] = false
-		lot.availableSlots++
-		if lot.availableSlots == 1 {
+		//lot.parkingSpace[vehicle] = false
+		delete(lot.parkingSpace, vehicle)
+		if len(lot.parkingSpace) == 1 {
 			lot.NotifyAllSubs("NotifyIsAvailable")
 		}
 		return nil
