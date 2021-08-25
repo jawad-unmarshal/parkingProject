@@ -230,13 +230,13 @@ func TestPark(t *testing.T) {
 
 	})
 
-	t.Run("Expect attendant to direct vehicle to parking lot with highest capacity among the available", func(t *testing.T) {
+	t.Run("Expect attendant to use highest capacity strategy if set", func(t *testing.T) {
 		var subList = make([]Subscriber, 1)
 		owner := NewOwner()
 		subList[0] = owner
 		parkingLot1 := NewParkingLot(2, subList)
 		parkingLot2 := NewParkingLot(1, subList)
-		var strategy = Strategy(NewHighestCapacityStrategy())
+		var strategy = NewHighestCapacityStrategy()
 		parkingLotList := make([]*ParkingLot, 2)
 		parkingLotList[0] = parkingLot1
 		parkingLotList[1] = parkingLot2
