@@ -2,26 +2,28 @@ package parkingProject
 
 import (
 	"errors"
-	"log"
 	"reflect"
 )
 
-type Subscriber interface {
-	NotifyIsFull()
-	NotifyIsAvailable()
-}
+type (
+	Subscriber interface {
+		NotifyIsFull(lot *ParkingLot)
+		NotifyIsAvailable(lot *ParkingLot)
+	}
+)
 
 type Vehicle struct {
 	i int
 }
 type Owner struct {
 	IsFull bool
-	Attendant
+	//Attendant
 }
 
 type Attendant struct {
-	IsFull      bool
-	parkingLots []*ParkingLot
+	IsFull        bool
+	parkingLots   []*ParkingLot
+	availableLots []*ParkingLot
 }
 
 type ParkingLot struct {
@@ -30,30 +32,24 @@ type ParkingLot struct {
 	subscribers    []Subscriber
 }
 
-func NewAttendant(parkingLots []*ParkingLot) *Attendant {
-	return &Attendant{parkingLots: parkingLots}
-}
-
-func (a *Attendant) Park(vehicle *Vehicle) error {
-	for _, pLot := range a.parkingLots {
-		log.Println(a.parkingLots)
-		if pLot.availableSlots > 0 {
-			return pLot.Park(vehicle)
-		}
-	}
-	return errors.New("All Parking lots are full")
-}
-func (a *Attendant) UnPark(vehicle *Vehicle) error {
-	for _, lot := range a.parkingLots {
-		if lot.IsParked(vehicle) {
-			return lot.UnPark(vehicle)
-		}
-	}
-	return errors.New("Vehicle not found.")
-}
-
 type PolicePerson struct {
 	IsFull bool
+}
+
+func NewAttendant(parkingLots []*ParkingLot) *Attendant {
+	var availableLots = make([]*ParkingLot, 0)
+	RetAttendant := Attendant{parkingLots: parkingLots}
+	for _, lot := range parkingLots {
+		lot.addSubscriber(&RetAttendant)
+		if lot.isAvailable() {
+			availableLots = append(availableLots, lot)
+		}
+	}
+	RetAttendant.availableLots = availableLots
+	return &RetAttendant
+}
+func (lot ParkingLot) isAvailable() bool {
+	return lot.availableSlots > 0
 }
 
 func NewPolicePerson() *PolicePerson {
@@ -64,40 +60,72 @@ func NewOwner() *Owner {
 	return &Owner{IsFull: false}
 }
 
-func (p *ParkingLot) addSubscriber(attendant *Attendant) {
-	p.subscribers = append(p.subscribers, attendant)
+func NewVehicle() *Vehicle {
+	return &Vehicle{}
 }
 
 func NewParkingLot(availableSlots int, subscriberList []Subscriber) *ParkingLot {
 	return &ParkingLot{availableSlots: availableSlots, subscribers: subscriberList, parkingSpace: make(map[*Vehicle]bool)}
 }
 
-func (o *Owner) NotifyIsFull() {
+func (o *Owner) NotifyIsFull(lot *ParkingLot) {
 	o.IsFull = true
 }
 
-func (o *Owner) NotifyIsAvailable() {
+func (o *Owner) NotifyIsAvailable(lot *ParkingLot) {
 	o.IsFull = false
 }
 
-func (p *PolicePerson) NotifyIsFull() {
+func (p *PolicePerson) NotifyIsFull(lot *ParkingLot) {
 	p.IsFull = true
 }
 
-func (p *PolicePerson) NotifyIsAvailable() {
+func (p *PolicePerson) NotifyIsAvailable(lot *ParkingLot) {
 	p.IsFull = false
 }
 
-func (a *Attendant) NotifyIsFull() {
+func (a *Attendant) NotifyIsFull(lotToRemove *ParkingLot) {
 	a.IsFull = true
+	availList := a.availableLots
+	for i, parkingLot := range availList {
+		if parkingLot == lotToRemove {
+			availList[i] = availList[len(availList)-1]
+			availList = availList[:len(availList)-1]
+			break
+		}
+	}
+
 }
 
-func (a *Attendant) NotifyIsAvailable() {
+func (a *Attendant) NotifyIsAvailable(lotToAdd *ParkingLot) {
 	a.IsFull = false
+	a.availableLots = append(a.availableLots, lotToAdd)
 }
 
-func NewVehicle() *Vehicle {
-	return &Vehicle{}
+func (a *Attendant) Park(vehicle *Vehicle) error {
+	if len(a.availableLots) == 0 {
+		return errors.New("all Parking lots are full")
+	}
+	max := -1
+	var maxLot *ParkingLot
+	for _, lot := range a.availableLots {
+		if lot.availableSlots > max {
+			max = lot.availableSlots
+			maxLot = lot
+		}
+	}
+
+	return maxLot.Park(vehicle)
+
+}
+
+func (a *Attendant) UnPark(vehicle *Vehicle) error {
+	for _, lot := range a.parkingLots {
+		if lot.IsParked(vehicle) {
+			return lot.UnPark(vehicle)
+		}
+	}
+	return errors.New("Vehicle not found.")
 }
 
 //func (P ParkingLot) NotifyAllSubsIsFull() {
@@ -113,44 +141,46 @@ func NewVehicle() *Vehicle {
 //	}
 //}
 
-func (P ParkingLot) NotifyAllSubs(functionName string) {
-	for _, subscriber := range P.subscribers {
-		reflect.ValueOf(subscriber).MethodByName(functionName).Call(nil)
+func (lot *ParkingLot) NotifyAllSubs(functionName string) {
+	for _, subscriber := range lot.subscribers {
+		args := []reflect.Value{reflect.ValueOf(lot)}
+		reflect.ValueOf(subscriber).MethodByName(functionName).Call(args)
 
 	}
-
 }
 
-func (P *ParkingLot) Park(vehicle *Vehicle) error {
-	if P.availableSlots == 0 {
+func (lot *ParkingLot) Park(vehicle *Vehicle) error {
+	if lot.availableSlots == 0 {
 		return errors.New("Parking is full. Cannot park vehicle")
 	}
-	if P.parkingSpace[vehicle] == true {
+	if lot.parkingSpace[vehicle] == true {
 		return errors.New("Cannot park already parked vehicle")
 	}
-	P.parkingSpace[vehicle] = true
-	P.availableSlots--
-	if P.availableSlots == 0 {
-		P.NotifyAllSubs("NotifyIsFull")
+	lot.parkingSpace[vehicle] = true
+	lot.availableSlots--
+	if lot.availableSlots == 0 {
+		lot.NotifyAllSubs("NotifyIsFull")
 		//P.NotifyAllSubsIsFull()
 	}
 	return nil
 }
 
-func (P *ParkingLot) IsParked(vehicle *Vehicle) bool {
-	return P.parkingSpace[vehicle]
+func (lot *ParkingLot) IsParked(vehicle *Vehicle) bool {
+	return lot.parkingSpace[vehicle]
 }
 
-func (P *ParkingLot) UnPark(vehicle *Vehicle) error {
-
-	if P.parkingSpace[vehicle] {
-		P.parkingSpace[vehicle] = false
-		P.availableSlots++
-		if P.availableSlots == 1 {
-			P.NotifyAllSubs("NotifyIsAvailable")
+func (lot *ParkingLot) UnPark(vehicle *Vehicle) error {
+	if lot.parkingSpace[vehicle] {
+		lot.parkingSpace[vehicle] = false
+		lot.availableSlots++
+		if lot.availableSlots == 1 {
+			lot.NotifyAllSubs("NotifyIsAvailable")
 		}
 		return nil
 	}
 	return errors.New("Vehicle has not been parked yet")
+}
 
+func (lot *ParkingLot) addSubscriber(attendant *Attendant) {
+	lot.subscribers = append(lot.subscribers, attendant)
 }

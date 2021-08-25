@@ -13,10 +13,10 @@ func TestPark(t *testing.T) {
 		subList := make([]Subscriber, 1)
 		subList[0] = owner
 		parkingLot := NewParkingLot(2, subList)
-		parkingLot.Park(vehicle)
+		err := parkingLot.Park(vehicle)
 		isParked := parkingLot.IsParked(vehicle)
 
-		assert.True(t, isParked)
+		assert.True(t, isParked, err)
 	})
 
 	t.Run("Expect parked vehicle to be unparked", func(t *testing.T) {
@@ -25,8 +25,8 @@ func TestPark(t *testing.T) {
 		subList := make([]Subscriber, 1)
 		subList[0] = owner
 		parkingLot := NewParkingLot(2, subList)
-		parkingLot.Park(vehicle)
-		parkingLot.UnPark(vehicle)
+		_ = parkingLot.Park(vehicle)
+		_ = parkingLot.UnPark(vehicle)
 		isParked := parkingLot.IsParked(vehicle)
 
 		assert.False(t, isParked)
@@ -47,10 +47,10 @@ func TestPark(t *testing.T) {
 		var vehicle2 = NewVehicle()
 		var vehicle3 = NewVehicle()
 		var ParkLot ParkingLot
-		ParkLot.Park(vehicle1)
-		ParkLot.Park(vehicle2)
-		ParkLot.Park(vehicle3)
-		ParkLot.UnPark(vehicle2)
+		_ = ParkLot.Park(vehicle1)
+		_ = ParkLot.Park(vehicle2)
+		_ = ParkLot.Park(vehicle3)
+		_ = ParkLot.UnPark(vehicle2)
 		isParked := ParkLot.IsParked(vehicle2)
 
 		assert.False(t, isParked)
@@ -63,7 +63,7 @@ func TestPark(t *testing.T) {
 		parkingLot := NewParkingLot(2, subList)
 		for i := 0; i < 2; i++ {
 			vehicle := NewVehicle()
-			parkingLot.Park(vehicle)
+			_ = parkingLot.Park(vehicle)
 		}
 
 		result := owner.IsFull
@@ -78,11 +78,11 @@ func TestPark(t *testing.T) {
 		parkingLot := NewParkingLot(2, subList)
 
 		vehicle1 := NewVehicle()
-		parkingLot.Park(vehicle1)
+		_ = parkingLot.Park(vehicle1)
 		vehicle2 := NewVehicle()
-		parkingLot.Park(vehicle2)
+		_ = parkingLot.Park(vehicle2)
 
-		parkingLot.UnPark(vehicle1)
+		_ = parkingLot.UnPark(vehicle1)
 
 		result := owner.IsFull
 
@@ -96,9 +96,9 @@ func TestPark(t *testing.T) {
 		parkingLot := NewParkingLot(2, subList)
 
 		vehicle1 := NewVehicle()
-		parkingLot.Park(vehicle1)
+		_ = parkingLot.Park(vehicle1)
 		vehicle2 := NewVehicle()
-		parkingLot.Park(vehicle2)
+		_ = parkingLot.Park(vehicle2)
 
 		result := policeMen.IsFull
 		assert.Equal(t, true, result, "Parking lot should be full")
@@ -119,7 +119,6 @@ func TestPark(t *testing.T) {
 
 		if parkResult != nil {
 			t.Fatal("attendant failed to park: ", parkResult)
-			t.FailNow()
 		}
 
 		isParked := parkingLot.IsParked(vehicle1)
@@ -137,12 +136,11 @@ func TestPark(t *testing.T) {
 		parkingLotList[0] = parkingLot
 		attendant := NewAttendant(parkingLotList)
 		vehicle1 := NewVehicle()
-		attendant.Park(vehicle1)
+		_ = attendant.Park(vehicle1)
 		parkResult := attendant.UnPark(vehicle1)
 
 		if parkResult != nil {
 			t.Fatal("attendant failed to Unpark: ", parkResult)
-			t.FailNow()
 		}
 
 		isParked := parkingLot.IsParked(vehicle1)
@@ -159,14 +157,70 @@ func TestPark(t *testing.T) {
 		parkingLotList := make([]*ParkingLot, 1)
 		parkingLotList[0] = parkingLot
 		attendant := NewAttendant(parkingLotList)
-		parkingLot.addSubscriber(attendant)
-
+		//parkingLot.addSubscriber(attendant)
 		vehicle1 := NewVehicle()
-		attendant.Park(vehicle1)
+		_ = attendant.Park(vehicle1)
 
 		result := attendant.IsFull
 
 		assert.Equal(t, true, result, "attendant should be notified")
+
+	})
+
+	t.Run("Expect attendant to manage multiple parkinglots", func(t *testing.T) {
+		var subList = make([]Subscriber, 1)
+		owner := NewOwner()
+		subList[0] = owner
+		parkingLot1 := NewParkingLot(0, subList)
+		parkingLot2 := NewParkingLot(3, subList)
+		parkingLotList := make([]*ParkingLot, 2)
+		parkingLotList[0] = parkingLot1
+		parkingLotList[1] = parkingLot2
+		attendant := NewAttendant(parkingLotList)
+		vehicle := NewVehicle()
+		_ = attendant.Park(vehicle)
+
+		result := parkingLot2.IsParked(vehicle)
+
+		assert.Equal(t, true, result, "vehicle should be parked in Lot 2")
+
+	})
+
+	t.Run("Expect attendant to direct vehicle to parking lot with highest free space", func(t *testing.T) {
+		var subList = make([]Subscriber, 1)
+		owner := NewOwner()
+		subList[0] = owner
+		parkingLot1 := NewParkingLot(2, subList)
+		parkingLot2 := NewParkingLot(3, subList)
+		parkingLotList := make([]*ParkingLot, 2)
+		parkingLotList[0] = parkingLot1
+		parkingLotList[1] = parkingLot2
+		attendant := NewAttendant(parkingLotList)
+		vehicle := NewVehicle()
+		_ = attendant.Park(vehicle)
+
+		result := parkingLot2.IsParked(vehicle)
+
+		assert.Equal(t, true, result, "vehicle should be parked in lot 2")
+
+	})
+
+	t.Run("Expect attendant to direct vehicle to parking lot with highest free space", func(t *testing.T) {
+		var subList = make([]Subscriber, 1)
+		owner := NewOwner()
+		subList[0] = owner
+		parkingLot1 := NewParkingLot(5, subList)
+		parkingLot2 := NewParkingLot(3, subList)
+		parkingLotList := make([]*ParkingLot, 2)
+		parkingLotList[0] = parkingLot1
+		parkingLotList[1] = parkingLot2
+		attendant := NewAttendant(parkingLotList)
+		vehicle := NewVehicle()
+		_ = attendant.Park(vehicle)
+
+		result := parkingLot1.IsParked(vehicle)
+
+		assert.Equal(t, true, result, "vehicle should be parked in lot 1")
 
 	})
 
